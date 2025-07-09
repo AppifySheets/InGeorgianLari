@@ -1,0 +1,334 @@
+@page "/"
+@using InGeorgianLari.Models
+@using InGeorgianLari.Services
+@inject IExchangeRateService ExchangeRateService
+
+<PageTitle>Georgian Lari Converter</PageTitle>
+
+<div class="container">
+    <div class="converter-card">
+        <h1 class="title">
+            <span class="flag">🇬🇪</span>
+            Georgian Lari Converter
+        </h1>
+        
+        @if (loading)
+        {
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading exchange rates...</p>
+            </div>
+        }
+        else if (error)
+        {
+            <div class="error">
+                <p>Unable to load exchange rates. Please try again later.</p>
+                <button class="btn-retry" @onclick="LoadRates">Retry</button>
+            </div>
+        }
+        else
+        {
+            <div class="input-section">
+                <div class="amount-input">
+                    <label for="amount">Amount</label>
+                    <input id="amount" type="number" @bind="amount" @bind:event="oninput" min="0" step="0.01" placeholder="0.00" />
+                </div>
+                
+                <div class="currency-select">
+                    <label for="currency">Currency</label>
+                    <select id="currency" @bind="selectedCurrency" @bind:event="onchange">
+                        <option value="USD">🇺🇸 USD - US Dollar</option>
+                        <option value="EUR">🇪🇺 EUR - Euro</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <div class="equals">=</div>
+                <div class="result">
+                    <span class="amount">₾ @calculatedAmount.ToString("N2")</span>
+                    <span class="currency-name">Georgian Lari</span>
+                </div>
+            </div>
+            
+            <div class="rate-info">
+                @if (currentRate != null)
+                {
+                    <p>Exchange Rate: 1 @selectedCurrency = ₾ @currentRate.Rate.ToString("N4")</p>
+                    <p class="date">Updated: @DateTime.Parse(currentRate.ValidFromDate).ToString("MMM dd, yyyy")</p>
+                }
+            </div>
+        }
+    </div>
+    
+    <footer>
+        <p>Exchange rates provided by National Bank of Georgia</p>
+        <p class="collab">*Collaboration by Claude*</p>
+    </footer>
+</div>
+
+@code {
+    decimal amount = 100;
+    string selectedCurrency = "USD";
+    bool loading = true;
+    bool error = false;
+    ExchangeRatesResponse? rates;
+    
+    CurrencyRate? currentRate => rates?.Rates.FirstOrDefault(r => r.Code == selectedCurrency);
+    decimal calculatedAmount => currentRate != null ? amount * currentRate.Rate / currentRate.Quantity : 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRates();
+    }
+    
+    async Task LoadRates()
+    {
+        loading = true;
+        error = false;
+        
+        rates = await ExchangeRateService.GetCurrentRatesAsync();
+        
+        loading = false;
+        error = rates == null;
+    }
+}
+
+<style>
+    :root {
+        --primary: #FF5C5C;
+        --secondary: #4A90E2;
+        --background: #F8F9FE;
+        --card: #FFFFFF;
+        --text: #2C3E50;
+        --text-light: #718096;
+        --border: #E2E8F0;
+        --shadow: rgba(0, 0, 0, 0.1);
+    }
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        background: var(--background);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    .container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .converter-card {
+        background: var(--card);
+        border-radius: 24px;
+        padding: 48px;
+        box-shadow: 0 20px 40px var(--shadow);
+        max-width: 500px;
+        width: 100%;
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    .title {
+        text-align: center;
+        color: var(--text);
+        font-size: 32px;
+        margin-bottom: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+    
+    .flag {
+        font-size: 40px;
+    }
+    
+    .input-section {
+        display: grid;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    
+    .amount-input, .currency-select {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    label {
+        color: var(--text-light);
+        font-size: 14px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    input, select {
+        padding: 16px 20px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 18px;
+        color: var(--text);
+        background: var(--card);
+        transition: all 0.3s ease;
+    }
+    
+    input:focus, select:focus {
+        outline: none;
+        border-color: var(--secondary);
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+    
+    .result-section {
+        background: linear-gradient(135deg, var(--primary), #FF7B7B);
+        border-radius: 16px;
+        padding: 32px;
+        text-align: center;
+        color: white;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .result-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    .equals {
+        font-size: 24px;
+        margin-bottom: 16px;
+        opacity: 0.9;
+    }
+    
+    .result {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .result .amount {
+        font-size: 48px;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .result .currency-name {
+        font-size: 18px;
+        opacity: 0.9;
+    }
+    
+    .rate-info {
+        text-align: center;
+        color: var(--text-light);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .rate-info .date {
+        margin-top: 4px;
+        font-size: 12px;
+    }
+    
+    .loading, .error {
+        text-align: center;
+        padding: 40px;
+    }
+    
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        animation: spin 1s linear infinite;
+    }
+    
+    .error p {
+        color: var(--text);
+        margin-bottom: 16px;
+    }
+    
+    .btn-retry {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-retry:hover {
+        background: #FF7B7B;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 92, 92, 0.3);
+    }
+    
+    footer {
+        margin-top: 40px;
+        text-align: center;
+        color: var(--text-light);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .collab {
+        font-size: 12px;
+        font-style: italic;
+        margin-top: 8px;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    @keyframes rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    @media (max-width: 600px) {
+        .converter-card {
+            padding: 32px 24px;
+        }
+        
+        .title {
+            font-size: 24px;
+        }
+        
+        .result .amount {
+            font-size: 36px;
+        }
+    }
+</style>
