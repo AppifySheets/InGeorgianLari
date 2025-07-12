@@ -13,23 +13,23 @@
             ლარის კონვერტორი
         </h1>
         
-        @if (loading)
-        {
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>იტვირთება...</p>
-            </div>
-        }
-        else if (error)
+        @if (error)
         {
             <div class="error">
                 <p>ვერ მოხერხდა კურსების ჩატვირთვა. გთხოვთ სცადოთ მოგვიანებით.</p>
                 <button class="btn-retry" @onclick="LoadRates">თავიდან ცდა</button>
             </div>
         }
+        else if (!initialLoad && loading)
+        {
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>იტვირთება...</p>
+            </div>
+        }
         else
         {
-            @if (currentRate != null)
+            @if (rates != null && currentRate != null)
             {
                 <div class="update-notification">
                     <div class="update-time">
@@ -55,7 +55,7 @@
                 </div>
             </div>
             
-            @if (currentRate != null)
+            @if (rates != null && currentRate != null)
             {
                 <div class="rate-display">
                     <div class="rate-card">
@@ -68,31 +68,35 @@
             <div class="result-section">
                 <div class="equals">=</div>
                 <div class="result">
-                    <span class="amount">₾ @calculatedAmount.ToString("N2")</span>
+                    <span class="amount">₾ @(rates != null ? calculatedAmount.ToString("N2") : "0.00")</span>
                     <span class="currency-name">ქართული ლარი</span>
                 </div>
             </div>
             
-            <div class="chart-section">
-                <h3>კურსის დინამიკა (ბოლო 14 დღე)</h3>
-                <div class="chart-container">
-                    <canvas id="rateChart"></canvas>
+            @if (rates != null)
+            {
+                <div class="chart-section">
+                    <h3>კურსის დინამიკა (ბოლო 14 დღე)</h3>
+                    <div class="chart-container">
+                        <canvas id="rateChart"></canvas>
+                    </div>
                 </div>
-            </div>
+            }
         }
     </div>
     
     <footer>
         <p>კურსები მოწოდებულია საქართველოს ეროვნული ბანკის მიერ</p>
-        <p class="collab">*თანამშრომლობა Claude*</p>
     </footer>
 </div>
 
 @code {
     decimal amount = 100;
     string selectedCurrency = "USD";
-    bool loading = true;
+    bool loading = false; // Start with loading false to avoid initial spinner
+    bool initialLoad = true; // Track if this is the first load
     bool error = false;
+    bool chartNeedsUpdate = false; // Track when chart needs updating
     ExchangeRatesResponse? rates;
     List<HistoricalRate>? historicalRates;
     
@@ -104,13 +108,16 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRates();
+        initialLoad = false; // Set to false after first load
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !loading && !error)
+        // We need to load chart after DOM is ready
+        if (chartNeedsUpdate && rates != null && !error && historicalRates != null)
         {
-            await LoadHistoricalRates();
+            await UpdateChart();
+            chartNeedsUpdate = false;
         }
     }
     
@@ -123,9 +130,15 @@
         
         loading = false;
         error = rates == null;
+        
+        if (!error && rates != null)
+        {
+            // Load historical data immediately after getting current rates
+            await LoadHistoricalRates();
+        }
     }
     
-    async Task LoadHistoricalRates()
+    Task LoadHistoricalRates()
     {
         // For now, we'll simulate historical data
         // In a real app, you'd call the API for historical rates
@@ -133,7 +146,10 @@
         var startDate = endDate.AddDays(-14);
         
         historicalRates = GenerateSimulatedHistoricalData(startDate, endDate);
-        await UpdateChart();
+        chartNeedsUpdate = true;
+        // Chart will be updated in OnAfterRenderAsync when DOM is ready
+        StateHasChanged(); // Trigger re-render to update chart
+        return Task.CompletedTask;
     }
     
     async Task OnCurrencyChanged()
