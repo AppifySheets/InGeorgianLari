@@ -6,8 +6,10 @@ A modern dark-themed currency converter for Georgian Lari (GEL) with real-time e
 
 - 🇬🇪 **Georgian Language** - Full Georgian UI translation
 - 🌙 **Dark Mode** - Modern dark theme design
-- 📊 **Exchange Rate Chart** - 14-day historical rate visualization
+- 📊 **Exchange Rate Charts** - Historical rate visualization
 - 💱 **Multiple Currencies** - Convert USD, EUR, and GBP to Georgian Lari
+- 📈 **Historical Rates** - View exchange rate history over time
+- 💰 **Purchasing Power** - Compare currency values over time
 - 📱 **Responsive Design** - Works perfectly on all devices
 - ⚡ **Real-time Rates** - Live data from National Bank of Georgia API
 - 🚀 **GitHub Pages** - Automated deployment via GitHub Actions
@@ -36,44 +38,35 @@ Visit: [https://appifysheets.github.io/InGeorgianLari/](https://appifysheets.git
 git clone https://github.com/AppifySheets/InGeorgianLari.git
 cd InGeorgianLari
 
-# Restore dependencies
-dotnet restore
+# Build and run
+./build-and-run.sh
 
-# Run the application
+# Or manually
+dotnet build
 dotnet run
-
-# Open http://localhost:5008 in your browser
 ```
+
+The application will be available at `https://localhost:5001`
 
 ### Building for Production
 ```bash
-dotnet publish -c Release -o dist
+dotnet publish -c Release -o publish
 ```
-
-## Deployment
-
-### Automatic Deployment (Main Branch)
-Every push to `main` automatically deploys to GitHub Pages via GitHub Actions.
-
-### Manual Preview Deployment
-You can deploy any branch for preview:
-
-1. Go to [Actions](https://github.com/AppifySheets/InGeorgianLari/actions)
-2. Select "Deploy Preview to GitHub Pages"
-3. Click "Run workflow"
-4. Select your branch and run
-
-### GitHub Pages Setup
-1. Go to Settings → Pages
-2. Source: GitHub Actions
-3. The site will be available at `https://[username].github.io/InGeorgianLari/`
 
 ## API Integration
 
-The app uses the National Bank of Georgia's public API:
-```
-https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/en/json
-```
+This application uses the National Bank of Georgia's official API for real-time exchange rates:
+- API Endpoint: `https://nbg.gov.ge/api/GetCurrentRates`
+- Updates: Daily at 11:00 AM Georgian time
+- Currencies supported: USD, EUR, GBP, and more
+
+## Deployment
+
+The application automatically deploys to GitHub Pages when changes are pushed to the main branch:
+
+1. GitHub Actions workflow builds the project
+2. Publishes to `gh-pages` branch
+3. Available at the GitHub Pages URL
 
 ## Contributing
 
