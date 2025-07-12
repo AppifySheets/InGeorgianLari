@@ -42,7 +42,14 @@ jobs:
         
       # Change base tag in index.html to match GitHub Pages subdirectory
       - name: Change base tag
-        run: sed -i 's/<base href="\/" \/>/<base href="\/InGeorgianLari\/" \/>/g' release/wwwroot/index.html
+        run: |
+          # Check if custom domain exists
+          if [ -f "wwwroot/CNAME" ]; then
+            echo "Custom domain detected, keeping base href as /"
+          else
+            echo "No custom domain, updating base href for GitHub Pages subdirectory"
+            sed -i 's/<base href="\/" \/>/<base href="\/InGeorgianLari\/" \/>/g' release/wwwroot/index.html
+          fi
         
       # Copy index.html to 404.html to handle SPA routing
       - name: Copy index.html to 404.html
