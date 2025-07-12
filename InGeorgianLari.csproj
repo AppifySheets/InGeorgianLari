@@ -4,11 +4,17 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>47609749-732c-40b4-8e0c-c4058246eb44</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.4" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="TestApi.cs" />
+    <Compile Remove="TestProgram.cs" />
   </ItemGroup>
 
 </Project>

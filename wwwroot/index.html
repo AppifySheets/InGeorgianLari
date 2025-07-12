@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ka">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Georgian Lari Converter - USD/EUR to GEL</title>
-    <meta name="description" content="Convert USD and EUR to Georgian Lari (GEL) with real-time exchange rates from the National Bank of Georgia" />
+    <title>ლარის კონვერტორი - USD/EUR/GBP to GEL</title>
+    <meta name="description" content="გადაიყვანეთ USD, EUR და GBP ქართულ ლარში (GEL) საქართველოს ეროვნული ბანკის რეალური კურსით" />
     <base href="/" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="InGeorgianLari.styles.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -21,11 +22,92 @@
     </div>
 
     <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
+        მოხდა შეცდომა.
+        <a href="." class="reload">განახლება</a>
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        let chartInstance = null;
+        
+        window.createChart = (canvasId, labels, data, currency) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            // Create new chart
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${currency}/GEL კურსი`,
+                        data: data,
+                        borderColor: '#4A90E2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4A90E2',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#E5E5E5',
+                            bodyColor: '#E5E5E5',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `₾ ${context.parsed.y.toFixed(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: {
+                                color: '#2A2A2A',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                callback: function(value) {
+                                    return '₾ ' + value.toFixed(4);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0'
+                            }
+                        }
+                    }
+                }
+            });
+        };
+    </script>
 </body>
 
 </html>

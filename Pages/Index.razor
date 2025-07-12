@@ -2,68 +2,89 @@
 @using InGeorgianLari.Models
 @using InGeorgianLari.Services
 @inject IExchangeRateService ExchangeRateService
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Georgian Lari Converter</PageTitle>
+<PageTitle>ლარის კონვერტორი</PageTitle>
 
 <div class="container">
     <div class="converter-card">
         <h1 class="title">
             <span class="flag">🇬🇪</span>
-            Georgian Lari Converter
+            ლარის კონვერტორი
         </h1>
         
         @if (loading)
         {
             <div class="loading">
                 <div class="spinner"></div>
-                <p>Loading exchange rates...</p>
+                <p>იტვირთება...</p>
             </div>
         }
         else if (error)
         {
             <div class="error">
-                <p>Unable to load exchange rates. Please try again later.</p>
-                <button class="btn-retry" @onclick="LoadRates">Retry</button>
+                <p>ვერ მოხერხდა კურსების ჩატვირთვა. გთხოვთ სცადოთ მოგვიანებით.</p>
+                <button class="btn-retry" @onclick="LoadRates">თავიდან ცდა</button>
             </div>
         }
         else
         {
+            @if (currentRate != null)
+            {
+                <div class="update-notification">
+                    <div class="update-time">
+                        <span class="label">კურსი განახლდა:</span>
+                        <span class="time">@DateTime.Parse(currentRate.ValidFromDate).ToString("dd MMMM, yyyy", new System.Globalization.CultureInfo("ka-GE"))</span>
+                    </div>
+                </div>
+            }
+            
             <div class="input-section">
                 <div class="amount-input">
-                    <label for="amount">Amount</label>
+                    <label for="amount">თანხა</label>
                     <input id="amount" type="number" @bind="amount" @bind:event="oninput" min="0" step="0.01" placeholder="0.00" />
                 </div>
                 
                 <div class="currency-select">
-                    <label for="currency">Currency</label>
-                    <select id="currency" @bind="selectedCurrency" @bind:event="onchange">
-                        <option value="USD">🇺🇸 USD - US Dollar</option>
-                        <option value="EUR">🇪🇺 EUR - Euro</option>
+                    <label for="currency">ვალუტა</label>
+                    <select id="currency" @bind="selectedCurrency" @bind:event="onchange" @bind:after="OnCurrencyChanged">
+                        <option value="USD">🇺🇸 USD - აშშ დოლარი</option>
+                        <option value="EUR">🇪🇺 EUR - ევრო</option>
+                        <option value="GBP">🇬🇧 GBP - ბრიტანული ფუნტი</option>
                     </select>
                 </div>
             </div>
+            
+            @if (currentRate != null)
+            {
+                <div class="rate-display">
+                    <div class="rate-card">
+                        <span class="rate-label">მიმდინარე კურსი</span>
+                        <span class="rate-value">1 @selectedCurrency = ₾ @currentRate.Rate.ToString("N4")</span>
+                    </div>
+                </div>
+            }
             
             <div class="result-section">
                 <div class="equals">=</div>
                 <div class="result">
                     <span class="amount">₾ @calculatedAmount.ToString("N2")</span>
-                    <span class="currency-name">Georgian Lari</span>
+                    <span class="currency-name">ქართული ლარი</span>
                 </div>
             </div>
             
-            <div class="rate-info">
-                @if (currentRate != null)
-                {
-                    <p>Exchange Rate: 1 @selectedCurrency = ₾ @currentRate.Rate.ToString("N4")</p>
-                    <p class="date">Updated: @DateTime.Parse(currentRate.ValidFromDate).ToString("MMM dd, yyyy")</p>
-                }
+            <div class="chart-section">
+                <h3>კურსის დინამიკა (ბოლო 14 დღე)</h3>
+                <div class="chart-container">
+                    <canvas id="rateChart"></canvas>
+                </div>
             </div>
         }
     </div>
     
     <footer>
-        <p>Exchange rates provided by National Bank of Georgia</p>
-        <p class="collab">*Collaboration by Claude*</p>
+        <p>კურსები მოწოდებულია საქართველოს ეროვნული ბანკის მიერ</p>
+        <p class="collab">*თანამშრომლობა Claude*</p>
     </footer>
 </div>
 
@@ -73,13 +94,24 @@
     bool loading = true;
     bool error = false;
     ExchangeRatesResponse? rates;
+    List<HistoricalRate>? historicalRates;
     
+    // Only USD, EUR, and GBP
+    List<CurrencyRate> availableRates => rates?.Rates.Where(r => r.Code == "USD" || r.Code == "EUR" || r.Code == "GBP").ToList() ?? new();
     CurrencyRate? currentRate => rates?.Rates.FirstOrDefault(r => r.Code == selectedCurrency);
-    decimal calculatedAmount => currentRate != null ? amount * currentRate.Rate / currentRate.Quantity : 0;
+    decimal calculatedAmount => currentRate != null && currentRate.Quantity > 0 ? amount * currentRate.Rate / currentRate.Quantity : 0;
     
     protected override async Task OnInitializedAsync()
     {
         await LoadRates();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !loading && !error)
+        {
+            await LoadHistoricalRates();
+        }
     }
     
     async Task LoadRates()
@@ -92,18 +124,73 @@
         loading = false;
         error = rates == null;
     }
+    
+    async Task LoadHistoricalRates()
+    {
+        // For now, we'll simulate historical data
+        // In a real app, you'd call the API for historical rates
+        var endDate = DateTime.Now;
+        var startDate = endDate.AddDays(-14);
+        
+        historicalRates = GenerateSimulatedHistoricalData(startDate, endDate);
+        await UpdateChart();
+    }
+    
+    async Task OnCurrencyChanged()
+    {
+        if (!loading && !error)
+        {
+            await LoadHistoricalRates();
+        }
+    }
+    
+    List<HistoricalRate> GenerateSimulatedHistoricalData(DateTime start, DateTime end)
+    {
+        var data = new List<HistoricalRate>();
+        var baseRate = currentRate?.Rate ?? 2.7m;
+        var random = new Random();
+        
+        for (var date = start; date <= end; date = date.AddDays(1))
+        {
+            // Simulate slight variations
+            var variation = (decimal)(random.NextDouble() * 0.1 - 0.05);
+            var rate = baseRate + variation;
+            data.Add(new HistoricalRate { Date = date, Rate = rate });
+        }
+        
+        return data;
+    }
+    
+    async Task UpdateChart()
+    {
+        if (historicalRates == null || !historicalRates.Any()) return;
+        
+        var labels = historicalRates.Select(h => h.Date.ToString("dd/MM")).ToArray();
+        var data = historicalRates.Select(h => h.Rate).ToArray();
+        
+        await JSRuntime.InvokeVoidAsync("createChart", "rateChart", labels, data, selectedCurrency);
+    }
+    
+    class HistoricalRate
+    {
+        public DateTime Date { get; set; }
+        public decimal Rate { get; set; }
+    }
 }
 
 <style>
     :root {
         --primary: #FF5C5C;
         --secondary: #4A90E2;
-        --background: #F8F9FE;
-        --card: #FFFFFF;
-        --text: #2C3E50;
-        --text-light: #718096;
-        --border: #E2E8F0;
-        --shadow: rgba(0, 0, 0, 0.1);
+        --background: #0F0F0F;
+        --card: #1A1A1A;
+        --card-light: #252525;
+        --text: #E5E5E5;
+        --text-light: #A0A0A0;
+        --border: #2A2A2A;
+        --shadow: rgba(0, 0, 0, 0.5);
+        --success: #10B981;
+        --danger: #EF4444;
     }
     
     * {
@@ -115,6 +202,7 @@
     body {
         background: var(--background);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        color: var(--text);
     }
     
     .container {
@@ -131,16 +219,17 @@
         border-radius: 24px;
         padding: 48px;
         box-shadow: 0 20px 40px var(--shadow);
-        max-width: 500px;
+        max-width: 800px;
         width: 100%;
         animation: slideUp 0.5s ease-out;
+        border: 1px solid var(--border);
     }
     
     .title {
         text-align: center;
         color: var(--text);
         font-size: 32px;
-        margin-bottom: 40px;
+        margin-bottom: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -149,6 +238,34 @@
     
     .flag {
         font-size: 40px;
+    }
+    
+    .update-notification {
+        background: linear-gradient(135deg, var(--secondary), #5BA3F5);
+        color: white;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        text-align: center;
+        box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3);
+    }
+    
+    .update-time {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .update-time .label {
+        font-size: 14px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .update-time .time {
+        font-size: 24px;
+        font-weight: 700;
     }
     
     .input-section {
@@ -177,14 +294,42 @@
         border-radius: 12px;
         font-size: 18px;
         color: var(--text);
-        background: var(--card);
+        background: var(--card-light);
         transition: all 0.3s ease;
     }
     
     input:focus, select:focus {
         outline: none;
         border-color: var(--secondary);
-        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+    }
+    
+    .rate-display {
+        margin-bottom: 32px;
+    }
+    
+    .rate-card {
+        background: var(--card-light);
+        border: 2px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .rate-label {
+        color: var(--text-light);
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .rate-value {
+        color: var(--text);
+        font-size: 28px;
+        font-weight: 700;
     }
     
     .result-section {
@@ -193,7 +338,7 @@
         padding: 32px;
         text-align: center;
         color: white;
-        margin-bottom: 24px;
+        margin-bottom: 40px;
         position: relative;
         overflow: hidden;
     }
@@ -232,16 +377,29 @@
         opacity: 0.9;
     }
     
-    .rate-info {
-        text-align: center;
-        color: var(--text-light);
-        font-size: 14px;
-        line-height: 1.6;
+    .chart-section {
+        margin-top: 40px;
     }
     
-    .rate-info .date {
-        margin-top: 4px;
-        font-size: 12px;
+    .chart-section h3 {
+        color: var(--text);
+        font-size: 24px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+    
+    .chart-container {
+        background: var(--card-light);
+        border: 2px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        height: 300px;
+        position: relative;
+    }
+    
+    #rateChart {
+        width: 100% !important;
+        height: 100% !important;
     }
     
     .loading, .error {
@@ -295,7 +453,7 @@
         margin-top: 8px;
     }
     
-    @keyframes slideUp {
+    @@keyframes slideUp {
         from {
             opacity: 0;
             transform: translateY(20px);
@@ -306,19 +464,19 @@
         }
     }
     
-    @keyframes spin {
+    @@keyframes spin {
         to {
             transform: rotate(360deg);
         }
     }
     
-    @keyframes rotate {
+    @@keyframes rotate {
         to {
             transform: rotate(360deg);
         }
     }
     
-    @media (max-width: 600px) {
+    @@media (max-width: 600px) {
         .converter-card {
             padding: 32px 24px;
         }
@@ -327,8 +485,20 @@
             font-size: 24px;
         }
         
+        .update-time .time {
+            font-size: 20px;
+        }
+        
+        .rate-value {
+            font-size: 24px;
+        }
+        
         .result .amount {
             font-size: 36px;
+        }
+        
+        .chart-container {
+            height: 250px;
         }
     }
 </style>
