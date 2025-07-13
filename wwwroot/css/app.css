@@ -1,4 +1,17 @@
 /* Dark mode theme for Georgian Lari Converter */
+
+/* Better font support for currency symbols */
+@font-face {
+    font-family: 'Currency Fallback';
+    src: local('Arial Unicode MS'),
+         local('Lucida Sans Unicode'), 
+         local('DejaVu Sans'),
+         local('Segoe UI Symbol'),
+         local('Noto Sans Symbols'),
+         local('Symbola');
+    unicode-range: U+20A0-20CF, U+20BE, U+20BF; /* Currency symbols */
+}
+
 :root {
     --background: #0A0A0A;
     --card: #141414;
@@ -30,6 +43,50 @@ html, body {
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
+}
+
+/* Currency symbol styling for better cross-platform support */
+.bitcoin-symbol,
+.lari-symbol,
+[class*="currency"] {
+    font-family: 'Currency Fallback', 'Arial Unicode MS', 'Lucida Sans Unicode', 'DejaVu Sans', 'Segoe UI Symbol', sans-serif;
+}
+
+/* Specific fixes for Georgian Lari */
+.lari-symbol {
+    font-family: 'Sylfaen', 'BPG Arial', 'BPG Nino', 'Currency Fallback', sans-serif;
+}
+
+/* Fallback text for unsupported symbols */
+.bitcoin-symbol:empty::after {
+    content: 'BTC';
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.lari-symbol:empty::after {
+    content: 'GEL';
+    font-size: 0.8em;
+}
+
+/* Fallbacks when symbols are not supported */
+body.no-bitcoin-symbol .bitcoin-symbol::after {
+    content: 'BTC';
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+body.no-bitcoin-symbol .bitcoin-symbol {
+    font-size: 0;
+}
+
+body.no-lari-symbol .lari-symbol::after {
+    content: 'GEL';
+    font-size: 0.8em;
+}
+
+body.no-lari-symbol .lari-symbol {
+    font-size: 0;
 }
 
 h1:focus {

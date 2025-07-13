@@ -6,7 +6,7 @@
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">
-            <span class="brand-icon">₿</span>
+            <span class="brand-icon bitcoin-symbol">₿</span>
             <span class="brand-text">ფული</span>
         </a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -168,10 +168,10 @@
         @if (bitcoinPrice != null)
         {
             <div class="btc-ticker">
-                <div class="ticker-symbol">1₿</div>
+                <div class="ticker-symbol">1<span class="bitcoin-symbol">₿</span></div>
                 <div class="ticker-rates">
                     <div class="ticker-price">$@bitcoinPrice.PriceUsd.ToString("N0")</div>
-                    <div class="ticker-price">₾@bitcoinPrice.PriceGel.ToString("N0")</div>
+                    <div class="ticker-price"><span class="lari-symbol">₾</span>@bitcoinPrice.PriceGel.ToString("N0")</div>
                 </div>
             </div>
         }

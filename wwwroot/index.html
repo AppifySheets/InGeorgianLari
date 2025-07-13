@@ -50,6 +50,32 @@
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
+        // Check for currency symbol support and add fallbacks
+        function checkCurrencySymbolSupport() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = '16px Arial';
+            
+            // Test Bitcoin symbol
+            const bitcoinWidth = context.measureText('\u20BF').width;
+            const bitcoinSupported = bitcoinWidth > context.measureText('').width;
+            
+            // Test Georgian Lari symbol  
+            const lariWidth = context.measureText('\u20BE').width;
+            const lariSupported = lariWidth > context.measureText('').width;
+            
+            // Add classes to body for CSS fallbacks
+            if (!bitcoinSupported) {
+                document.body.classList.add('no-bitcoin-symbol');
+            }
+            if (!lariSupported) {
+                document.body.classList.add('no-lari-symbol');
+            }
+        }
+        
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', checkCurrencySymbolSupport);
+        
         let chartInstance = null;
         
         window.createChart = (canvasId, labels, data, currency) => {
