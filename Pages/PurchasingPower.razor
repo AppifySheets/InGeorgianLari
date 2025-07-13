@@ -1,0 +1,529 @@
+@page "/purchasing-power"
+@using InGeorgianLari.Models
+@using InGeorgianLari.Services
+@inject IJSRuntime JSRuntime
+
+<PageTitle>მსყიდველუნარიანობა - დოლარის რეალური ღირებულება</PageTitle>
+
+<div class="purchasing-power-container page-container">
+    <h1 class="page-title">მსყიდველუნარიანობის ანალიზი</h1>
+    
+    <div class="intro-section">
+        <p class="intro-text">
+            ეს გვერდი აჩვენებს, თუ როგორ შეიცვალა დოლარის მსყიდველუნარიანობა დროთა განმავლობაში.
+            რეალური ღირებულება ასახავს იმას, თუ რამდენი საქონელი და მომსახურება შეგიძლიათ შეიძინოთ იმავე თანხით.
+        </p>
+    </div>
+
+    @if (loading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>იტვირთება მონაცემები...</p>
+        </div>
+    }
+    else
+    {
+        <div class="main-card">
+            <div class="power-display">
+                <h2>$100 დღეს = <span class="highlight">$@currentPurchasingPower.ToString("N2")</span> @baseYear წელს</h2>
+                <p class="sub-text">ინფლაციის გათვალისწინებით</p>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat">
+                    <span class="stat-label">დაკარგული ღირებულება</span>
+                    <span class="stat-value negative">-@((100 - currentPurchasingPower).ToString("N2"))%</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">საშუალო წლიური ინფლაცია</span>
+                    <span class="stat-value">@averageInflation.ToString("N2")%</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">პერიოდი</span>
+                    <span class="stat-value">@(DateTime.Now.Year - baseYear) წელი</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h3>მსყიდველუნარიანობის ცვლილება დროში</h3>
+            <div class="chart-container">
+                <canvas id="purchasingPowerChart"></canvas>
+            </div>
+        </div>
+
+        <div class="comparison-section">
+            <h3>რეალური მაგალითები</h3>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-icon">🏠</div>
+                    <h4>უძრავი ქონება</h4>
+                    <p class="then">@baseYear: $@housePriceThen.ToString("N0")</p>
+                    <p class="now">@DateTime.Now.Year: $@housePriceNow.ToString("N0")</p>
+                    <p class="change">+@(((housePriceNow - housePriceThen) / housePriceThen * 100).ToString("N0"))%</p>
+                </div>
+                <div class="example-card">
+                    <div class="example-icon">🎓</div>
+                    <h4>განათლება</h4>
+                    <p class="then">@baseYear: $@educationThen.ToString("N0")</p>
+                    <p class="now">@DateTime.Now.Year: $@educationNow.ToString("N0")</p>
+                    <p class="change">+@(((educationNow - educationThen) / educationThen * 100).ToString("N0"))%</p>
+                </div>
+                <div class="example-card">
+                    <div class="example-icon">⚕️</div>
+                    <h4>ჯანდაცვა</h4>
+                    <p class="then">@baseYear: $@healthcareThen.ToString("N0")</p>
+                    <p class="now">@DateTime.Now.Year: $@healthcareNow.ToString("N0")</p>
+                    <p class="change">+@(((healthcareNow - healthcareThen) / healthcareThen * 100).ToString("N0"))%</p>
+                </div>
+                <div class="example-card alternative">
+                    <div class="example-icon">₿</div>
+                    <h4>ალტერნატივა</h4>
+                    <p class="then">@btcYear: $@btcPriceThen.ToString("N0")</p>
+                    <p class="now">@DateTime.Now.Year: $@btcPriceNow.ToString("N0")</p>
+                    <p class="change positive">+@(((btcPriceNow - btcPriceThen) / btcPriceThen * 100).ToString("N0"))%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="notice-banner">
+            <p>⚠️ შენიშვნა: ამ გვერდზე მონაცემები არის სიმულირებული დემონსტრაციისთვის და ეფუძნება ზოგად ეკონომიკურ ტენდენციებს.</p>
+        </div>
+        
+        <div class="insights-section">
+            <h3>მნიშვნელოვანი დასკვნები</h3>
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <div class="insight-number">1</div>
+                    <h4>ტრადიციული ვალუტები</h4>
+                    <p>ყველა ძირითადი ვალუტა კარგავს მსყიდველუნარიანობას დროთა განმავლობაში ინფლაციის გამო.</p>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-number">2</div>
+                    <h4>რეალური აქტივები</h4>
+                    <p>უძრავი ქონება და განათლება ძვირდება ინფლაციაზე სწრაფად, რაც ზრდის ცხოვრების ღირებულებას.</p>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-number">3</div>
+                    <h4>შენახვის საშუალებები</h4>
+                    <p>ზოგიერთი ალტერნატიული აქტივი უკეთ ინარჩუნებს ღირებულებას გრძელვადიან პერსპექტივაში.</p>
+                </div>
+                <div class="insight-card highlight">
+                    <div class="insight-number">₿</div>
+                    <h4>ციფრული ალტერნატივა</h4>
+                    <p>შეზღუდული მიწოდების აქტივები პოტენციურად იცავს ინფლაციისგან.</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    
+    // Base year for comparison
+    private int baseYear = 1970;
+    private int btcYear = 2010;
+    
+    // Current purchasing power of $100
+    private decimal currentPurchasingPower = 12.41m;
+    private decimal averageInflation = 3.8m;
+    
+    // Example prices
+    private decimal housePriceThen = 23000m;
+    private decimal housePriceNow = 374000m;
+    
+    private decimal educationThen = 1500m;
+    private decimal educationNow = 35000m;
+    
+    private decimal healthcareThen = 500m;
+    private decimal healthcareNow = 12000m;
+    
+    private decimal btcPriceThen = 0.08m;
+    private decimal btcPriceNow = 97000m;
+    
+    // Chart data
+    private List<PurchasingPowerData> chartData = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Particles are now created globally in MainLayout
+            if (!loading)
+            {
+                await CreateChart();
+            }
+        }
+    }
+    
+    async Task LoadData()
+    {
+        loading = true;
+        
+        // Simulate data loading
+        await Task.Run(() => chartData = GenerateChartData());
+        
+        loading = false;
+        StateHasChanged();
+    }
+    
+    List<PurchasingPowerData> GenerateChartData()
+    {
+        var data = new List<PurchasingPowerData>();
+        var currentPower = 100m;
+        var inflationRates = new[] { 2.5m, 3.5m, 4.2m, 2.1m, 3.8m, 5.4m, 2.9m, 3.3m, 6.8m, 8.0m, 3.2m };
+        var random = new Random(42);
+        
+        for (int year = baseYear; year <= DateTime.Now.Year; year++)
+        {
+            if (year > baseYear)
+            {
+                var inflation = inflationRates[random.Next(inflationRates.Length)] + (decimal)(random.NextDouble() * 2 - 1);
+                currentPower *= (1 - inflation / 100);
+            }
+            
+            data.Add(new PurchasingPowerData
+            {
+                Year = year,
+                PurchasingPower = Math.Max(currentPower, 10),
+                InflationRate = year == baseYear ? 0 : inflationRates[random.Next(inflationRates.Length)]
+            });
+        }
+        
+        // Set current value
+        if (data.Any())
+        {
+            currentPurchasingPower = data.Last().PurchasingPower;
+        }
+        
+        return data;
+    }
+    
+    async Task CreateChart()
+    {
+        var labels = chartData.Select(d => d.Year.ToString()).ToArray();
+        var powerData = chartData.Select(d => d.PurchasingPower).ToArray();
+        var inflationData = chartData.Select(d => d.InflationRate).ToArray();
+        
+        await JSRuntime.InvokeVoidAsync("createPurchasingPowerChart", 
+            "purchasingPowerChart", labels, powerData, inflationData);
+    }
+    
+    class PurchasingPowerData
+    {
+        public int Year { get; set; }
+        public decimal PurchasingPower { get; set; }
+        public decimal InflationRate { get; set; }
+    }
+}
+
+<style>
+    .purchasing-power-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .page-title {
+        color: var(--text);
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .intro-section {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .intro-text {
+        color: var(--text-light);
+        font-size: 1.1rem;
+        max-width: 700px;
+        margin: 0 auto;
+        line-height: 1.8;
+    }
+    
+    .loading-state {
+        text-align: center;
+        padding: 4rem;
+        color: var(--text-light);
+    }
+    
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+    }
+    
+    .main-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 3rem;
+        margin-bottom: 3rem;
+        text-align: center;
+    }
+    
+    .power-display h2 {
+        color: var(--text);
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .power-display .highlight {
+        color: var(--primary);
+        font-weight: 700;
+    }
+    
+    .sub-text {
+        color: var(--text-light);
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stats-row {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        flex-wrap: wrap;
+    }
+    
+    .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--text-light);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+        color: var(--text);
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    
+    .stat-value.negative {
+        color: #EF4444;
+    }
+    
+    .chart-section {
+        margin-bottom: 3rem;
+    }
+    
+    .chart-section h3 {
+        color: var(--text);
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .chart-container {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        height: 400px;
+        position: relative;
+    }
+    
+    .comparison-section {
+        margin-bottom: 3rem;
+    }
+    
+    .comparison-section h3 {
+        color: var(--text);
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .examples-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .example-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    
+    .example-card:hover {
+        transform: translateY(-4px);
+    }
+    
+    .example-card.alternative {
+        background: linear-gradient(135deg, rgba(247, 147, 26, 0.1) 0%, rgba(255, 149, 0, 0.1) 100%);
+        border-color: rgba(247, 147, 26, 0.3);
+    }
+    
+    .example-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .example-card h4 {
+        color: var(--text);
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .example-card p {
+        margin: 0.5rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .example-card .then {
+        color: var(--text-light);
+    }
+    
+    .example-card .now {
+        color: var(--text);
+        font-weight: 600;
+    }
+    
+    .example-card .change {
+        color: #EF4444;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-top: 1rem;
+    }
+    
+    .example-card .change.positive {
+        color: #10B981;
+    }
+    
+    .insights-section h3 {
+        color: var(--text);
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .insight-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        position: relative;
+        transition: transform 0.2s;
+    }
+    
+    .insight-card:hover {
+        transform: translateY(-4px);
+    }
+    
+    .insight-card.highlight {
+        background: linear-gradient(135deg, rgba(247, 147, 26, 0.1) 0%, rgba(255, 149, 0, 0.1) 100%);
+        border-color: rgba(247, 147, 26, 0.3);
+    }
+    
+    .insight-number {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        background: var(--card-light);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: var(--text-light);
+        font-size: 1.2rem;
+    }
+    
+    .insight-card.highlight .insight-number {
+        background: linear-gradient(135deg, #F7931A 0%, #FF9500 100%);
+        color: white;
+    }
+    
+    .insight-card h4 {
+        color: var(--text);
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .insight-card p {
+        color: var(--text-light);
+        line-height: 1.6;
+        margin: 0;
+    }
+    
+    .notice-banner {
+        background: var(--card);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin: 2rem 0;
+        text-align: center;
+    }
+    
+    .notice-banner p {
+        color: var(--text-light);
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @@media (max-width: 768px) {
+        .purchasing-power-container {
+            padding: 1rem;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+        }
+        
+        .main-card {
+            padding: 2rem;
+        }
+        
+        .power-display h2 {
+            font-size: 1.8rem;
+        }
+        
+        .stats-row {
+            gap: 2rem;
+        }
+        
+        .chart-container {
+            height: 300px;
+            padding: 1rem;
+        }
+    }
+</style>

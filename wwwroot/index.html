@@ -8,22 +8,43 @@
     <meta name="description" content="გადაიყვანეთ USD, EUR და GBP ქართულ ლარში (GEL) საქართველოს ეროვნული ბანკის რეალური კურსით" />
     <base href="/" />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
     <link href="InGeorgianLari.styles.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="app-loading">
+            <div class="loading-bg">
+                <div class="loading-particles"></div>
+            </div>
+            <div class="loading-content">
+                <div class="loading-logo">
+                    <div class="currency-animation">
+                        <div class="currency-item usd">$</div>
+                        <div class="currency-item gel">₾</div>
+                        <div class="currency-item eur">€</div>
+                        <div class="currency-item btc">₿</div>
+                    </div>
+                </div>
+                <h1 class="loading-title">ლარის კონვერტორი</h1>
+                <div class="loading-animation">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                </div>
+                <p class="loading-text">იტვირთება...</p>
+            </div>
+        </div>
     </div>
 
-    <div id="blazor-error-ui">
-        მოხდა შეცდომა.
-        <a href="." class="reload">განახლება</a>
+    <!-- Blazor error UI removed to prevent false error display -->
+    <div id="blazor-error-ui" style="display: none !important;">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
@@ -106,6 +127,465 @@
                     }
                 }
             });
+        };
+        
+        window.createHistoricalChart = (canvasId, labels, usdData, btcData, showBitcoin) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (window.historicalChartInstance) {
+                window.historicalChartInstance.destroy();
+            }
+            
+            const datasets = [{
+                label: 'USD/GEL',
+                data: usdData,
+                borderColor: '#4A90E2',
+                backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                yAxisID: 'y'
+            }];
+            
+            if (showBitcoin) {
+                datasets.push({
+                    label: 'BTC/1000 GEL',
+                    data: btcData,
+                    borderColor: '#F7931A',
+                    backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    yAxisID: 'y1'
+                });
+            }
+            
+            // Create new chart
+            window.historicalChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#E5E5E5',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#E5E5E5',
+                            bodyColor: '#E5E5E5',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label === 'USD/GEL') {
+                                        return `USD: ₾ ${context.parsed.y.toFixed(4)}`;
+                                    } else if (context.dataset.label === 'BTC/1000 GEL') {
+                                        return `BTC: ₾ ${(context.parsed.y * 1000).toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: {
+                                color: '#2A2A2A',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                callback: function(value) {
+                                    return '₾ ' + value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'USD/GEL კურსი',
+                                color: '#A0A0A0'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: showBitcoin,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                color: '#F7931A',
+                                callback: function(value) {
+                                    return '₾ ' + (value * 1000).toLocaleString();
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'BTC/GEL კურსი',
+                                color: '#F7931A'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        window.createPurchasingPowerChart = (canvasId, labels, powerData, inflationData) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (window.purchasingPowerChartInstance) {
+                window.purchasingPowerChartInstance.destroy();
+            }
+            
+            // Create new chart
+            window.purchasingPowerChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'მსყიდველუნარიანობა ($100)',
+                        data: powerData,
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'ინფლაცია (%)',
+                        data: inflationData,
+                        borderColor: '#A0A0A0',
+                        backgroundColor: 'rgba(160, 160, 160, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        yAxisID: 'y1',
+                        borderDash: [5, 5]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#E5E5E5',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#E5E5E5',
+                            bodyColor: '#E5E5E5',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label.includes('მსყიდველუნარიანობა')) {
+                                        return `ღირებულება: $${context.parsed.y.toFixed(2)}`;
+                                    } else {
+                                        return `ინფლაცია: ${context.parsed.y.toFixed(1)}%`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: {
+                                color: '#2A2A2A',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'მსყიდველუნარიანობა',
+                                color: '#A0A0A0'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'ინფლაციის განაკვეთი',
+                                color: '#A0A0A0'
+                            },
+                            min: 0,
+                            max: 10
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                maxRotation: 45,
+                                minRotation: 45,
+                                callback: function(value, index) {
+                                    // Show every 5th year
+                                    return index % 5 === 0 ? this.getLabelForValue(value) : '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        window.createGelUsdChart = (canvasId, labels, gelUsdData) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (window.gelUsdChartInstance) {
+                window.gelUsdChartInstance.destroy();
+            }
+            
+            // Create new chart
+            window.gelUsdChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'GEL/USD კურსი',
+                        data: gelUsdData,
+                        borderColor: '#4A90E2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#E5E5E5',
+                            bodyColor: '#E5E5E5',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    return `₾${context.parsed.y.toFixed(4)} = $1`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: {
+                                color: '#2A2A2A',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                callback: function(value) {
+                                    return '₾' + value.toFixed(3);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        window.createUsdBtcChart = (canvasId, labels, usdBtcData) => {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (window.usdBtcChartInstance) {
+                window.usdBtcChartInstance.destroy();
+            }
+            
+            // Create new chart with logarithmic scale
+            window.usdBtcChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'BTC Price (USD)',
+                        data: usdBtcData,
+                        borderColor: '#F7931A',
+                        backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.9)',
+                            titleColor: '#E5E5E5',
+                            bodyColor: '#E5E5E5',
+                            borderColor: '#F7931A',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    return `$${context.parsed.y.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'logarithmic',
+                            grid: {
+                                color: '#2A2A2A',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#F7931A',
+                                callback: function(value) {
+                                    if (value >= 1000) {
+                                        return '$' + (value/1000).toFixed(0) + 'K';
+                                    }
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#A0A0A0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        window.createParticles = (containerId) => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Clear existing particles
+            container.innerHTML = '';
+            
+            // Colorful particle colors
+            const colors = [
+                'rgba(139, 92, 246, 0.6)',  // Purple
+                'rgba(236, 72, 153, 0.6)',  // Pink
+                'rgba(34, 197, 94, 0.6)',   // Green
+                'rgba(251, 191, 36, 0.6)',  // Yellow
+                'rgba(59, 130, 246, 0.6)',  // Blue
+                'rgba(239, 68, 68, 0.6)',   // Red
+                'rgba(16, 185, 129, 0.6)',  // Teal
+                'rgba(245, 158, 11, 0.6)'   // Orange
+            ];
+            
+            // Create particles
+            for (let i = 0; i < 60; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.width = particle.style.height = (2 + Math.random() * 4) + 'px';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (20 + Math.random() * 15) + 's';
+                container.appendChild(particle);
+            }
         };
     </script>
 </body>

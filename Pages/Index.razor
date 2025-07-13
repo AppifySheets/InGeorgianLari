@@ -6,35 +6,35 @@
 
 <PageTitle>ლარის კონვერტორი</PageTitle>
 
-<div class="container">
+<div class="container page-container">
     <div class="converter-card">
         <h1 class="title">
             <span class="flag">🇬🇪</span>
             ლარის კონვერტორი
         </h1>
         
-        @if (loading)
-        {
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>იტვირთება...</p>
-            </div>
-        }
-        else if (error)
+        @if (error)
         {
             <div class="error">
                 <p>ვერ მოხერხდა კურსების ჩატვირთვა. გთხოვთ სცადოთ მოგვიანებით.</p>
                 <button class="btn-retry" @onclick="LoadRates">თავიდან ცდა</button>
             </div>
         }
+        else if (!initialLoad && loading)
+        {
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>იტვირთება...</p>
+            </div>
+        }
         else
         {
-            @if (currentRate != null)
+            @if (rates != null && currentRate != null)
             {
                 <div class="update-notification">
                     <div class="update-time">
                         <span class="label">კურსი განახლდა:</span>
-                        <span class="time">@DateTime.Parse(currentRate.ValidFromDate).ToString("dd MMMM, yyyy", new System.Globalization.CultureInfo("ka-GE"))</span>
+                        <span class="time">@GetGeorgianDate(DateTime.Parse(currentRate.ValidFromDate))</span>
                     </div>
                 </div>
             }
@@ -55,7 +55,7 @@
                 </div>
             </div>
             
-            @if (currentRate != null)
+            @if (rates != null && currentRate != null)
             {
                 <div class="rate-display">
                     <div class="rate-card">
@@ -68,31 +68,35 @@
             <div class="result-section">
                 <div class="equals">=</div>
                 <div class="result">
-                    <span class="amount">₾ @calculatedAmount.ToString("N2")</span>
+                    <span class="amount">₾ @(rates != null ? calculatedAmount.ToString("N2") : "0.00")</span>
                     <span class="currency-name">ქართული ლარი</span>
                 </div>
             </div>
             
-            <div class="chart-section">
-                <h3>კურსის დინამიკა (ბოლო 14 დღე)</h3>
-                <div class="chart-container">
-                    <canvas id="rateChart"></canvas>
+            @if (rates != null)
+            {
+                <div class="chart-section">
+                    <h3>კურსის დინამიკა (ბოლო 3 თვე)</h3>
+                    <div class="chart-container">
+                        <canvas id="rateChart"></canvas>
+                    </div>
                 </div>
-            </div>
+            }
         }
     </div>
     
     <footer>
         <p>კურსები მოწოდებულია საქართველოს ეროვნული ბანკის მიერ</p>
-        <p class="collab">*თანამშრომლობა Claude*</p>
     </footer>
 </div>
 
 @code {
     decimal amount = 100;
     string selectedCurrency = "USD";
-    bool loading = true;
+    bool loading = false; // Start with loading false to avoid initial spinner
+    bool initialLoad = true; // Track if this is the first load
     bool error = false;
+    bool chartNeedsUpdate = false; // Track when chart needs updating
     ExchangeRatesResponse? rates;
     List<HistoricalRate>? historicalRates;
     
@@ -104,15 +108,24 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRates();
+        initialLoad = false; // Set to false after first load
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !loading && !error)
+        if (firstRender)
         {
-            await LoadHistoricalRates();
+            // Particles are now created globally in MainLayout
+        }
+        
+        // We need to load chart after DOM is ready
+        if (chartNeedsUpdate && rates != null && !error && historicalRates != null)
+        {
+            await UpdateChart();
+            chartNeedsUpdate = false;
         }
     }
+    
     
     async Task LoadRates()
     {
@@ -123,17 +136,26 @@
         
         loading = false;
         error = rates == null;
+        
+        if (!error && rates != null)
+        {
+            // Load historical data immediately after getting current rates
+            await LoadHistoricalRates();
+        }
     }
     
-    async Task LoadHistoricalRates()
+    Task LoadHistoricalRates()
     {
         // For now, we'll simulate historical data
         // In a real app, you'd call the API for historical rates
         var endDate = DateTime.Now;
-        var startDate = endDate.AddDays(-14);
+        var startDate = endDate.AddMonths(-3); // 3 months of data
         
         historicalRates = GenerateSimulatedHistoricalData(startDate, endDate);
-        await UpdateChart();
+        chartNeedsUpdate = true;
+        // Chart will be updated in OnAfterRenderAsync when DOM is ready
+        StateHasChanged(); // Trigger re-render to update chart
+        return Task.CompletedTask;
     }
     
     async Task OnCurrencyChanged()
@@ -148,14 +170,29 @@
     {
         var data = new List<HistoricalRate>();
         var baseRate = currentRate?.Rate ?? 2.7m;
-        var random = new Random();
+        var random = new Random(42); // Fixed seed for consistent data
+        
+        // Start with a slightly lower rate 3 months ago
+        var startRate = baseRate * 0.95m;
+        var currentRateValue = startRate;
         
         for (var date = start; date <= end; date = date.AddDays(1))
         {
-            // Simulate slight variations
-            var variation = (decimal)(random.NextDouble() * 0.1 - 0.05);
-            var rate = baseRate + variation;
+            // Simulate more realistic variations with trend
+            var dailyChange = (decimal)(random.NextDouble() * 0.01 - 0.003); // Slight upward trend
+            currentRateValue *= (1 + dailyChange);
+            
+            // Add some volatility
+            var volatility = (decimal)(random.NextDouble() * 0.02 - 0.01);
+            var rate = currentRateValue * (1 + volatility);
+            
             data.Add(new HistoricalRate { Date = date, Rate = rate });
+        }
+        
+        // Ensure the last rate matches the current rate
+        if (data.Any())
+        {
+            data[data.Count - 1].Rate = baseRate;
         }
         
         return data;
@@ -165,8 +202,13 @@
     {
         if (historicalRates == null || !historicalRates.Any()) return;
         
-        var labels = historicalRates.Select(h => h.Date.ToString("dd/MM")).ToArray();
-        var data = historicalRates.Select(h => h.Rate).ToArray();
+        // For 3 months of data, show weekly labels to avoid crowding
+        var weeklyData = historicalRates
+            .Where((h, index) => index % 7 == 0 || index == historicalRates.Count - 1)
+            .ToList();
+        
+        var labels = weeklyData.Select(h => h.Date.ToString("dd MMM")).ToArray();
+        var data = weeklyData.Select(h => h.Rate).ToArray();
         
         await JSRuntime.InvokeVoidAsync("createChart", "rateChart", labels, data, selectedCurrency);
     }
@@ -175,6 +217,16 @@
     {
         public DateTime Date { get; set; }
         public decimal Rate { get; set; }
+    }
+    
+    string GetGeorgianDate(DateTime date)
+    {
+        var monthNames = new[] {
+            "იანვარი", "თებერვალი", "მარტი", "აპრილი", "მაისი", "ივნისი",
+            "ივლისი", "აგვისტო", "სექტემბერი", "ოქტომბერი", "ნოემბერი", "დეკემბერი"
+        };
+        
+        return $"{date.Day} {monthNames[date.Month - 1]}, {date.Year}";
     }
 }
 

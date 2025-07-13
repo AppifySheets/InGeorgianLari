@@ -1,0 +1,525 @@
+@page "/historical"
+@using InGeorgianLari.Models
+@using InGeorgianLari.Services
+@inject IExchangeRateService ExchangeRateService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>ისტორიული კურსები - ლარი, დოლარი და ₿</PageTitle>
+
+<div class="historical-container page-container">
+    <h1 class="page-title">ისტორიული კურსები</h1>
+    
+    <div class="controls-section">
+        <div class="period-selector">
+            <button class="period-btn @(selectedPeriod == "1Y" ? "active" : "")" @onclick='() => SelectPeriod("1Y")'>1 წელი</button>
+            <button class="period-btn @(selectedPeriod == "5Y" ? "active" : "")" @onclick='() => SelectPeriod("5Y")'>5 წელი</button>
+            <button class="period-btn @(selectedPeriod == "10Y" ? "active" : "")" @onclick='() => SelectPeriod("10Y")'>10 წელი</button>
+            <button class="period-btn @(selectedPeriod == "ALL" ? "active" : "")" @onclick='() => SelectPeriod("ALL")'>ყველა</button>
+        </div>
+    </div>
+    
+    @if (loading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>იტვირთება ისტორიული მონაცემები...</p>
+        </div>
+    }
+    else
+    {
+        <div class="charts-grid">
+            <div class="chart-wrapper">
+                <h3 class="chart-title">GEL/USD კურსი</h3>
+                <div class="chart-container">
+                    <canvas id="gelUsdChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-wrapper bitcoin-chart">
+                <h3 class="chart-title">USD/₿ Bitcoin (ლოგარითმული)</h3>
+                <div class="chart-container">
+                    <canvas id="usdBtcChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>USD/GEL</h3>
+                <div class="stat-value">₾ @currentUsdRate.ToString("N4")</div>
+                <div class="stat-change @(usdChange >= 0 ? "positive" : "negative")">
+                    @(usdChange >= 0 ? "+" : "")@usdChange.ToString("N2")% (@selectedPeriod)
+                </div>
+            </div>
+            
+            <div class="stat-card bitcoin-card">
+                <h3>₿ Bitcoin</h3>
+                <div class="stat-value">$@currentBtcPriceUsd.ToString("N0")</div>
+                <div class="stat-change positive">
+                    +@btcChange.ToString("N0")% (@selectedPeriod)
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>ლარის კურსი</h3>
+                <div class="stat-value">@DateTime.Now.Year</div>
+                <div class="stat-change neutral">ეროვნული ბანკი</div>
+            </div>
+        </div>
+        
+        <div class="notice-banner">
+            <p>⚠️ შენიშვნა: ამ გვერდზე მონაცემები არის სიმულირებული დემონსტრაციისთვის. რეალური ისტორიული მონაცემებისთვის საჭიროა NBG API-ს ისტორიული endpoint-ის ინტეგრაცია.</p>
+        </div>
+        
+        <div class="insights-section">
+            <h2>ტენდენციები</h2>
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <div class="insight-icon">📊</div>
+                    <p>ბოლო @GetPeriodText() განმავლობაში ლარი დოლართან მიმართებაში @(usdChange > 0 ? "გამყარდა" : "გაუფასურდა") @Math.Abs(usdChange).ToString("N1")%-ით</p>
+                </div>
+                
+                <div class="insight-card bitcoin-insight">
+                    <div class="insight-icon">₿</div>
+                    <p>იმავე პერიოდში ალტერნატიული ციფრული აქტივი გაძლიერდა @btcChange.ToString("N0")%-ით</p>
+                </div>
+                
+                <div class="insight-card">
+                    <div class="insight-icon">💰</div>
+                    <p>ინფლაციის გათვალისწინებით რეალური მსყიდველუნარიანობა განსხვავებულია</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private string selectedPeriod = "5Y";
+    
+    // Current rates
+    private decimal currentUsdRate = 2.7160m;
+    private decimal currentBtcPriceUsd = 97000m; // BTC in USD
+    
+    // Changes
+    private decimal usdChange = -15.3m;
+    private decimal btcChange = 12500m;
+    
+    // Historical data
+    private List<HistoricalDataPoint> historicalData = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoricalData();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Particles are now created globally in MainLayout
+            if (!loading)
+            {
+                await UpdateChart();
+            }
+        }
+    }
+    
+    async Task LoadHistoricalData()
+    {
+        loading = true;
+        
+        // Simulate loading historical data
+        // In real implementation, this would fetch from NBG API and Bitcoin price APIs
+        await Task.Run(() => historicalData = GenerateHistoricalData());
+        
+        loading = false;
+        StateHasChanged();
+    }
+    
+    async Task SelectPeriod(string period)
+    {
+        selectedPeriod = period;
+        await LoadHistoricalData();
+        await UpdateChart();
+    }
+    
+    async Task UpdateChart()
+    {
+        if (!loading && historicalData.Any())
+        {
+            var filteredData = FilterDataByPeriod();
+            
+            var labels = filteredData.Select(d => d.Date.ToString("MMM yyyy")).ToArray();
+            var gelUsdData = filteredData.Select(d => d.UsdRate).ToArray();
+            var usdBtcData = filteredData.Select(d => d.BtcPriceUsd).ToArray();
+            
+            // Create GEL/USD chart
+            await JSRuntime.InvokeVoidAsync("createGelUsdChart", 
+                "gelUsdChart", labels, gelUsdData);
+            
+            // Create USD/BTC chart with logarithmic scale
+            await JSRuntime.InvokeVoidAsync("createUsdBtcChart", 
+                "usdBtcChart", labels, usdBtcData);
+        }
+    }
+    
+    List<HistoricalDataPoint> FilterDataByPeriod()
+    {
+        var cutoffDate = selectedPeriod switch
+        {
+            "1Y" => DateTime.Now.AddYears(-1),
+            "5Y" => DateTime.Now.AddYears(-5),
+            "10Y" => DateTime.Now.AddYears(-10),
+            _ => DateTime.MinValue
+        };
+        
+        return historicalData.Where(d => d.Date >= cutoffDate).ToList();
+    }
+    
+    List<HistoricalDataPoint> GenerateHistoricalData()
+    {
+        var data = new List<HistoricalDataPoint>();
+        var random = new Random(42); // Fixed seed for consistency
+        
+        // Generate 15 years of monthly data
+        var startDate = DateTime.Now.AddYears(-15);
+        var baseUsdRate = 1.65m;
+        var baseBtcPrice = 0.30m; // Starting BTC price in USD (2010)
+        
+        for (var date = startDate; date <= DateTime.Now; date = date.AddMonths(1))
+        {
+            // GEL gradually depreciates against USD (with some volatility)
+            baseUsdRate *= (1 + (decimal)(random.NextDouble() * 0.02 - 0.005));
+            
+            // BTC grows exponentially in USD (with high volatility)
+            if (date.Year >= 2010) // Bitcoin started in 2009-2010
+            {
+                baseBtcPrice *= (1 + (decimal)(random.NextDouble() * 0.15 - 0.02));
+            }
+            
+            data.Add(new HistoricalDataPoint
+            {
+                Date = date,
+                UsdRate = baseUsdRate,
+                BtcPriceUsd = baseBtcPrice
+            });
+        }
+        
+        // Set current values
+        if (data.Any())
+        {
+            currentUsdRate = data.Last().UsdRate;
+            currentBtcPriceUsd = data.Last().BtcPriceUsd;
+            
+            // Temporarily assign to historicalData to use FilterDataByPeriod
+            historicalData = data;
+            var filteredData = FilterDataByPeriod();
+            if (filteredData.Any())
+            {
+                var periodStart = filteredData.First();
+                usdChange = ((currentUsdRate - periodStart.UsdRate) / periodStart.UsdRate) * 100;
+                btcChange = ((currentBtcPriceUsd - periodStart.BtcPriceUsd) / periodStart.BtcPriceUsd) * 100;
+            }
+        }
+        
+        return data;
+    }
+    
+    string GetPeriodText() => selectedPeriod switch
+    {
+        "1Y" => "1 წლის",
+        "5Y" => "5 წლის",
+        "10Y" => "10 წლის",
+        _ => "მთელი პერიოდის"
+    };
+    
+    class HistoricalDataPoint
+    {
+        public DateTime Date { get; set; }
+        public decimal UsdRate { get; set; } // GEL per USD
+        public decimal BtcPriceUsd { get; set; } // BTC price in USD
+    }
+}
+
+<style>
+    .historical-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .chart-wrapper {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .bitcoin-chart {
+        background: linear-gradient(135deg, rgba(247, 147, 26, 0.05) 0%, rgba(255, 149, 0, 0.05) 100%);
+        border-color: rgba(247, 147, 26, 0.2);
+    }
+    
+    .chart-title {
+        color: var(--text);
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .bitcoin-chart .chart-title {
+        color: #F7931A;
+    }
+    
+    .page-title {
+        color: var(--text);
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .controls-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .period-selector {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--card);
+        padding: 0.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+    
+    .period-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-light);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+    
+    .period-btn:hover {
+        background: var(--card-light);
+        color: var(--text);
+    }
+    
+    .period-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .comparison-toggle {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: var(--text-light);
+        font-size: 0.95rem;
+    }
+    
+    .toggle-label input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .toggle-label span {
+        font-weight: 500;
+    }
+    
+    .loading-state {
+        text-align: center;
+        padding: 4rem;
+        color: var(--text-light);
+    }
+    
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+    }
+    
+    .chart-container {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        height: 400px;
+        position: relative;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+    
+    .stat-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-card h3 {
+        color: var(--text-light);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+        color: var(--text);
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-change {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .stat-change.positive {
+        color: #10B981;
+    }
+    
+    .stat-change.negative {
+        color: #EF4444;
+    }
+    
+    .stat-change.neutral {
+        color: var(--text-light);
+    }
+    
+    .bitcoin-card {
+        background: linear-gradient(135deg, #F7931A 0%, #FF9500 100%);
+        border: none;
+    }
+    
+    .bitcoin-card h3,
+    .bitcoin-card .stat-value,
+    .bitcoin-card .stat-change {
+        color: white !important;
+    }
+    
+    .insights-section {
+        margin-top: 3rem;
+    }
+    
+    .insights-section h2 {
+        color: var(--text);
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .insight-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .bitcoin-insight {
+        background: linear-gradient(135deg, rgba(247, 147, 26, 0.1) 0%, rgba(255, 149, 0, 0.1) 100%);
+        border-color: rgba(247, 147, 26, 0.3);
+    }
+    
+    .insight-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+    
+    .insight-card p {
+        color: var(--text-light);
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .notice-banner {
+        background: var(--card);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin: 2rem 0;
+        text-align: center;
+    }
+    
+    .notice-banner p {
+        color: var(--text-light);
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @@media (max-width: 768px) {
+        .historical-container {
+            padding: 1rem;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+        }
+        
+        .controls-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .period-selector {
+            justify-content: center;
+        }
+        
+        .chart-container {
+            height: 300px;
+            padding: 1rem;
+        }
+    }
+</style>
