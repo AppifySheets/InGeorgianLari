@@ -1,4 +1,5 @@
 @page "/"
+@page "/{Currency}/{Amount:decimal?}"
 @using InGeorgianLari.Models
 @using InGeorgianLari.Services
 @inject IExchangeRateService ExchangeRateService
@@ -10,7 +11,7 @@
 <div class="container page-container mobile-safe">
     <div class="converter-card">
         <h1 class="title">
-            <span class="flag">₿</span>
+            <span class="flag bitcoin-symbol">₿</span>
             ბიტკოინი ლარში
         </h1>
         
@@ -49,9 +50,9 @@
                 <div class="currency-select">
                     <label for="currency">ვალუტა</label>
                     <select id="currency" @bind="selectedCurrency" @bind:event="onchange" @bind:after="OnCurrencyChanged">
-                        <option value="USD">🇺🇸 USD - აშშ დოლარი</option>
-                        <option value="EUR">🇪🇺 EUR - ევრო</option>
-                        <option value="GBP">🇬🇧 GBP - ბრიტანული ფუნტი</option>
+                        <option value="USD">USD - აშშ დოლარი</option>
+                        <option value="EUR">EUR - ევრო</option>
+                        <option value="GBP">GBP - ბრიტანული ფუნტი</option>
                     </select>
                 </div>
             </div>
@@ -61,7 +62,7 @@
                 <div class="rate-display">
                     <div class="rate-card">
                         <span class="rate-label">მიმდინარე კურსი</span>
-                        <span class="rate-value">1 @selectedCurrency = ₾ @currentRate.Rate.ToString("N4")</span>
+                        <span class="rate-value">1 @selectedCurrency = <span class="lari-symbol">₾</span> @currentRate.Rate.ToString("N4")</span>
                     </div>
                 </div>
             }
@@ -69,7 +70,7 @@
             <div class="result-section">
                 <div class="equals">=</div>
                 <div class="result">
-                    <span class="amount">₾ @(rates != null ? calculatedAmount.ToString("N2") : "0.00")</span>
+                    <span class="amount"><span class="lari-symbol">₾</span> @(rates != null ? calculatedAmount.ToString("N2") : "0.00")</span>
                     <span class="currency-name">ქართული ლარი</span>
                 </div>
             </div>
@@ -92,6 +93,9 @@
 </div>
 
 @code {
+    [Parameter] public string? Currency { get; set; }
+    [Parameter] public decimal? Amount { get; set; }
+    
     decimal amount = 100;
     string selectedCurrency = "USD";
     bool loading = false; // Start with loading false to avoid initial spinner
@@ -109,6 +113,23 @@
     
     protected override async Task OnInitializedAsync()
     {
+        // Handle URL parameters
+        if (!string.IsNullOrEmpty(Currency))
+        {
+            var upperCurrency = Currency.ToUpperInvariant();
+            // Check if it's a supported currency
+            if (upperCurrency == "USD" || upperCurrency == "EUR" || upperCurrency == "GBP")
+            {
+                selectedCurrency = upperCurrency;
+            }
+        }
+        
+        // Set amount from URL parameter if provided
+        if (Amount.HasValue && Amount.Value > 0)
+        {
+            amount = Amount.Value;
+        }
+        
         await LoadRates();
         initialLoad = false; // Set to false after first load
     }
@@ -777,6 +798,40 @@
         50% {
             transform: translateY(-10px);
         }
+    }
+    
+    /* Currency symbol fixes for cross-platform compatibility */
+    .bitcoin-symbol {
+        font-family: 'Arial Unicode MS', 'Lucida Sans Unicode', 'DejaVu Sans', sans-serif;
+        /* Fallback for Bitcoin symbol */
+    }
+    
+    .bitcoin-symbol:empty::before {
+        content: 'B';
+        font-weight: bold;
+    }
+    
+    .lari-symbol {
+        font-family: 'Sylfaen', 'BPG Nino', 'Arial Unicode MS', 'Lucida Sans Unicode', sans-serif;
+        /* Georgian fonts first, then Unicode fallbacks */
+    }
+    
+    .lari-symbol:empty::before {
+        content: 'GEL';
+        font-size: 0.8em;
+    }
+    
+    /* Add currency indicators to select options */
+    select option[value="USD"]::before {
+        content: '$ ';
+    }
+    
+    select option[value="EUR"]::before {
+        content: '€ ';
+    }
+    
+    select option[value="GBP"]::before {
+        content: '£ ';
     }
     
     /* Mobile Responsiveness */
