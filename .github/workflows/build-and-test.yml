@@ -1,9 +1,10 @@
 name: Build and Test
 
-# Run on PRs and pushes to any branch
+# Run on PRs to main and direct pushes to main
+# This avoids duplicate runs when pushing to a PR branch
 on:
   push:
-    branches: [ '**' ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
