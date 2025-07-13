@@ -385,4 +385,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 # macOS
-.DS_Store
+.DS_Storescreenshots/
