@@ -4,10 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ლარის კონვერტორი - USD/EUR/GBP to GEL</title>
-    <meta name="description" content="გადაიყვანეთ USD, EUR და GBP ქართულ ლარში (GEL) საქართველოს ეროვნული ბანკის რეალური კურსით" />
+    <title>ფული - ციფრული ვალუტა და ტრადიციული ფინანსები</title>
+    <meta name="description" content="გაეცანით ბიტკოინს, კრიპტოვალუტებს და ტრადიციულ საფულო სისტემებს. რეალური დროის ფასები, კალკულატორები, საგანმანათლებლო რესურსები." />
     <base href="/" />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <!-- Inline favicon with Lari sign -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1a1a'/%3E%3Crect width='64' height='64' rx='12' fill='none' stroke='%23F7931A' stroke-width='3'/%3E%3Ctext x='32' y='45' font-family='Georgia, serif' font-size='40' font-weight='bold' text-anchor='middle' fill='%23F7931A'%3E₾%3C/text%3E%3C/svg%3E" />
     <link href="lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
@@ -30,7 +31,7 @@
                         <div class="currency-item btc">₿</div>
                     </div>
                 </div>
-                <h1 class="loading-title">ლარის კონვერტორი</h1>
+                <h1 class="loading-title">ფული</h1>
                 <div class="loading-animation">
                     <div class="pulse-ring"></div>
                     <div class="pulse-ring"></div>
@@ -563,16 +564,17 @@
             // Clear existing particles
             container.innerHTML = '';
             
-            // Colorful particle colors
+            // Dark orange and pink particle colors
             const colors = [
-                'rgba(139, 92, 246, 0.6)',  // Purple
-                'rgba(236, 72, 153, 0.6)',  // Pink
-                'rgba(34, 197, 94, 0.6)',   // Green
-                'rgba(251, 191, 36, 0.6)',  // Yellow
-                'rgba(59, 130, 246, 0.6)',  // Blue
-                'rgba(239, 68, 68, 0.6)',   // Red
-                'rgba(16, 185, 129, 0.6)',  // Teal
-                'rgba(245, 158, 11, 0.6)'   // Orange
+                'rgba(247, 147, 26, 0.25)',  // Bitcoin orange
+                'rgba(255, 140, 0, 0.2)',    // Dark orange
+                'rgba(255, 165, 0, 0.15)',   // Orange
+                'rgba(180, 90, 20, 0.3)',    // Deep orange
+                'rgba(200, 100, 25, 0.25)',  // Burnt orange
+                'rgba(60, 15, 35, 0.2)',     // Dark pink
+                'rgba(220, 110, 30, 0.2)',   // Amber orange
+                'rgba(160, 80, 20, 0.25)',   // Brown orange
+                'rgba(240, 120, 20, 0.15)'   // Bright dark orange
             ];
             
             // Create particles

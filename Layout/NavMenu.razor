@@ -1,6 +1,14 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using InGeorgianLari.Services
+@using InGeorgianLari.Models
+@inject IBitcoinService BitcoinService
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">₾ ლარის კურსი</a>
+        <a class="navbar-brand" href="">
+            <span class="brand-icon">₿</span>
+            <span class="brand-text">ფული</span>
+        </a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -9,31 +17,224 @@
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-currency-exchange" aria-hidden="true"></span> კონვერტორი
-            </NavLink>
+        <!-- Georgian Lari Section -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="@(() => ToggleSection("lari"))">
+                <span class="section-icon bi bi-currency-exchange"></span>
+                <span class="section-title">ქართული ლარი</span>
+                <span class="section-toggle bi @(expandedSections.Contains("lari") ? "bi-chevron-up" : "bi-chevron-down")"></span>
+            </div>
+            <div class="nav-section-content @(expandedSections.Contains("lari") ? "expanded" : "")">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-calculator" aria-hidden="true"></span>
+                        <span>NBG კურსი</span>
+                    </NavLink>
+                </div>
+            </div>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="historical">
-                <span class="bi bi-graph-up" aria-hidden="true"></span> ისტორიული კურსები
-            </NavLink>
+
+        <!-- Bitcoin Section -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="@(() => ToggleSection("bitcoin"))">
+                <span class="section-icon bi bi-currency-bitcoin"></span>
+                <span class="section-title">ბიტკოინი</span>
+                <span class="section-toggle bi @(expandedSections.Contains("bitcoin") ? "bi-chevron-up" : "bi-chevron-down")"></span>
+            </div>
+            <div class="nav-section-content @(expandedSections.Contains("bitcoin") ? "expanded" : "")">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-calculator" aria-hidden="true"></span>
+                        <span>BTC კალკულატორი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="btc-price">
+                        <span class="bi bi-graph-up-arrow" aria-hidden="true"></span>
+                        <span>ფასის ისტორია</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="halving">
+                        <span class="bi bi-hourglass-split" aria-hidden="true"></span>
+                        <span>ჰალვინგის ტაიმერი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="mining">
+                        <span class="bi bi-cpu" aria-hidden="true"></span>
+                        <span>მაინინგის სტატისტიკა</span>
+                    </NavLink>
+                </div>
+            </div>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="purchasing-power">
-                <span class="bi bi-cash-coin" aria-hidden="true"></span> მსყიდველუნარიანობა
-            </NavLink>
+
+        <!-- Traditional Money Section -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="@(() => ToggleSection("fiat"))">
+                <span class="section-icon bi bi-cash-stack"></span>
+                <span class="section-title">ფიატური ვალუტა</span>
+                <span class="section-toggle bi @(expandedSections.Contains("fiat") ? "bi-chevron-up" : "bi-chevron-down")"></span>
+            </div>
+            <div class="nav-section-content @(expandedSections.Contains("fiat") ? "expanded" : "")">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="currency-converter">
+                        <span class="bi bi-currency-exchange" aria-hidden="true"></span>
+                        <span>ვალუტის კონვერტორი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="historical" Match="NavLinkMatch.All">
+                        <span class="bi bi-clock-history" aria-hidden="true"></span>
+                        <span>ისტორიული კურსები</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="purchasing-power" Match="NavLinkMatch.All">
+                        <span class="bi bi-piggy-bank" aria-hidden="true"></span>
+                        <span>მსყიდველობითი უნარი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="inflation">
+                        <span class="bi bi-graph-down" aria-hidden="true"></span>
+                        <span>ინფლაციის ტრეკერი</span>
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Education Section -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="@(() => ToggleSection("education"))">
+                <span class="section-icon bi bi-book"></span>
+                <span class="section-title">სწავლა</span>
+                <span class="section-toggle bi @(expandedSections.Contains("education") ? "bi-chevron-up" : "bi-chevron-down")"></span>
+            </div>
+            <div class="nav-section-content @(expandedSections.Contains("education") ? "expanded" : "")">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="bitcoin-basics">
+                        <span class="bi bi-lightbulb" aria-hidden="true"></span>
+                        <span>ბიტკოინის საფუძვლები</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="money-history">
+                        <span class="bi bi-bank" aria-hidden="true"></span>
+                        <span>ფულის ისტორია</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="economics">
+                        <span class="bi bi-bar-chart" aria-hidden="true"></span>
+                        <span>ეკონომიკის საფუძვლები</span>
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools Section -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="@(() => ToggleSection("tools"))">
+                <span class="section-icon bi bi-tools"></span>
+                <span class="section-title">ინსტრუმენტები</span>
+                <span class="section-toggle bi @(expandedSections.Contains("tools") ? "bi-chevron-up" : "bi-chevron-down")"></span>
+            </div>
+            <div class="nav-section-content @(expandedSections.Contains("tools") ? "expanded" : "")">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="portfolio">
+                        <span class="bi bi-briefcase" aria-hidden="true"></span>
+                        <span>პორტფოლიოს ტრეკერი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="dca-calculator">
+                        <span class="bi bi-calculator-fill" aria-hidden="true"></span>
+                        <span>DCA კალკულატორი</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="alerts">
+                        <span class="bi bi-bell" aria-hidden="true"></span>
+                        <span>ფასის შეტყობინებები</span>
+                    </NavLink>
+                </div>
+            </div>
         </div>
     </nav>
+    
+    <!-- Footer with Bitcoin price ticker -->
+    <div class="nav-footer">
+        @if (bitcoinPrice != null)
+        {
+            <div class="btc-ticker">
+                <div class="ticker-symbol">1₿</div>
+                <div class="ticker-rates">
+                    <div class="ticker-price">$@bitcoinPrice.PriceUsd.ToString("N0")</div>
+                    <div class="ticker-price">₾@bitcoinPrice.PriceGel.ToString("N0")</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="btc-ticker">
+                <span class="ticker-label">იტვირთება...</span>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
+    private HashSet<string> expandedSections = new HashSet<string>() { "lari" };
+    private BitcoinPrice? bitcoinPrice;
+    private Timer? refreshTimer;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ToggleSection(string section)
+    {
+        if (expandedSections.Contains(section))
+        {
+            expandedSections.Remove(section);
+        }
+        else
+        {
+            expandedSections.Add(section);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBitcoinPrice();
+        
+        // Refresh Bitcoin price every second
+        refreshTimer = new Timer(async _ =>
+        {
+            await LoadBitcoinPrice();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task LoadBitcoinPrice()
+    {
+        try
+        {
+            bitcoinPrice = await BitcoinService.GetCurrentPriceAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Bitcoin price: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
     }
 }

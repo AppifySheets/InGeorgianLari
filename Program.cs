@@ -10,5 +10,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Configure HttpClient for BOG API
 builder.Services.AddScoped(sp => new HttpClient());
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
+builder.Services.AddScoped<IBitcoinService, BitcoinService>();
 
 await builder.Build().RunAsync();

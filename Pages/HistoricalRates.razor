@@ -326,8 +326,9 @@
     }
     
     .period-btn.active {
-        background: var(--primary);
-        color: white;
+        background: #2A2A2A;
+        color: var(--text);
+        border: 1px solid rgba(100, 50, 12, 0.3);
     }
     
     .comparison-toggle {
@@ -428,14 +429,17 @@
     }
     
     .bitcoin-card {
-        background: linear-gradient(135deg, #F7931A 0%, #FF9500 100%);
-        border: none;
+        background: linear-gradient(135deg, #1A1A1A 0%, #252525 100%);
+        border: 1px solid rgba(100, 50, 12, 0.2);
     }
     
-    .bitcoin-card h3,
+    .bitcoin-card h3 {
+        color: rgba(247, 147, 26, 0.7) !important;
+    }
+    
     .bitcoin-card .stat-value,
     .bitcoin-card .stat-change {
-        color: white !important;
+        color: var(--text) !important;
     }
     
     .insights-section {
