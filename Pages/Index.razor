@@ -2,15 +2,16 @@
 @using InGeorgianLari.Models
 @using InGeorgianLari.Services
 @inject IExchangeRateService ExchangeRateService
+@inject IBitcoinService BitcoinService
 @inject IJSRuntime JSRuntime
 
-<PageTitle>ლარის კონვერტორი</PageTitle>
+<PageTitle>ლარის ეროვნული ბანკის კურსი</PageTitle>
 
-<div class="container page-container">
+<div class="container page-container mobile-safe">
     <div class="converter-card">
         <h1 class="title">
-            <span class="flag">🇬🇪</span>
-            ლარის კონვერტორი
+            <span class="flag">₿</span>
+            ბიტკოინი ლარში
         </h1>
         
         @if (error)
@@ -99,6 +100,7 @@
     bool chartNeedsUpdate = false; // Track when chart needs updating
     ExchangeRatesResponse? rates;
     List<HistoricalRate>? historicalRates;
+    BitcoinPrice? bitcoinPrice;
     
     // Only USD, EUR, and GBP
     List<CurrencyRate> availableRates => rates?.Rates.Where(r => r.Code == "USD" || r.Code == "EUR" || r.Code == "GBP").ToList() ?? new();
@@ -132,7 +134,14 @@
         loading = true;
         error = false;
         
-        rates = await ExchangeRateService.GetCurrentRatesAsync();
+        // Load both exchange rates and Bitcoin price in parallel
+        var ratesTask = ExchangeRateService.GetCurrentRatesAsync();
+        var bitcoinTask = BitcoinService.GetCurrentPriceAsync();
+        
+        await Task.WhenAll(ratesTask, bitcoinTask);
+        
+        rates = ratesTask.Result;
+        bitcoinPrice = bitcoinTask.Result;
         
         loading = false;
         error = rates == null;
@@ -232,17 +241,21 @@
 
 <style>
     :root {
-        --primary: #FF5C5C;
+        --primary: #F7931A;
         --secondary: #4A90E2;
-        --background: #0F0F0F;
-        --card: #1A1A1A;
-        --card-light: #252525;
+        --background: #0A0A0A;
+        --card: #141414;
+        --card-light: #1F1F1F;
         --text: #E5E5E5;
         --text-light: #A0A0A0;
         --border: #2A2A2A;
         --shadow: rgba(0, 0, 0, 0.5);
         --success: #10B981;
         --danger: #EF4444;
+        --accent-orange: #FFA500;
+        --accent-gold: #FFD700;
+        --accent-teal: #14B8A6;
+        --bitcoin-gold: #F7931A;
     }
     
     * {
@@ -259,22 +272,91 @@
     
     .container {
         min-height: 100vh;
+        min-height: -webkit-fill-available;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         padding: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Mobile viewport fix */
+    .mobile-safe {
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    /* Dynamic background elements - subtle dark gradients */
+    .container::before {
+        content: '';
+        position: absolute;
+        top: -100%;
+        left: -100%;
+        width: 300%;
+        height: 300%;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(30, 30, 40, 0.4) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(40, 30, 35, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(25, 35, 45, 0.3) 0%, transparent 60%),
+            radial-gradient(circle at 10% 90%, rgba(15, 25, 35, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 90% 10%, rgba(247, 147, 26, 0.02) 0%, transparent 40%); /* Subtle Bitcoin orange */
+        animation: bgMove 60s ease-in-out infinite;
+        z-index: -2;
+    }
+    
+    /* Bitcoin pattern overlay - very subtle */
+    .container::after {
+        content: '₿';
+        position: absolute;
+        font-size: 600px;
+        font-weight: 100;
+        color: rgba(247, 147, 26, 0.015);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-15deg);
+        z-index: -1;
+        pointer-events: none;
+        animation: bitcoinFloat 90s ease-in-out infinite;
     }
     
     .converter-card {
-        background: var(--card);
+        background: rgba(26, 26, 26, 0.95);
+        backdrop-filter: blur(20px);
         border-radius: 24px;
         padding: 48px;
-        box-shadow: 0 20px 40px var(--shadow);
+        box-shadow: 
+            0 20px 40px rgba(0, 0, 0, 0.5),
+            0 0 100px rgba(139, 92, 246, 0.1),
+            inset 0 0 120px rgba(255, 255, 255, 0.01);
         max-width: 800px;
         width: 100%;
         animation: slideUp 0.5s ease-out;
-        border: 1px solid var(--border);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Subtle animated border */
+    .converter-card::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        right: -1px;
+        bottom: -1px;
+        background: linear-gradient(45deg, 
+            rgba(50, 50, 60, 0.5), 
+            rgba(40, 40, 50, 0.5), 
+            rgba(247, 147, 26, 0.1), /* Subtle Bitcoin orange */
+            rgba(30, 30, 40, 0.5));
+        background-size: 400% 400%;
+        border-radius: 24px;
+        opacity: 0.8;
+        animation: borderGradient 30s ease infinite;
+        z-index: -1;
     }
     
     .title {
@@ -286,26 +368,44 @@
         align-items: center;
         justify-content: center;
         gap: 12px;
+        flex-wrap: wrap;
     }
     
     .flag {
         font-size: 40px;
+        animation: bounce 2s ease-in-out infinite;
     }
     
     .update-notification {
-        background: linear-gradient(135deg, var(--secondary), #5BA3F5);
-        color: white;
+        background: linear-gradient(135deg, var(--dark-orange), var(--dark-orange-deep));
+        color: var(--text);
         padding: 20px;
         border-radius: 16px;
         margin-bottom: 32px;
         text-align: center;
-        box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3);
+        border: 1px solid var(--dark-orange-glow);
+        box-shadow: 0 4px 20px var(--dark-orange-glow);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .update-notification::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        animation: shimmer 3s ease-in-out infinite;
     }
     
     .update-time {
         display: flex;
         flex-direction: column;
         gap: 8px;
+        position: relative;
+        z-index: 1;
     }
     
     .update-time .label {
@@ -346,14 +446,18 @@
         border-radius: 12px;
         font-size: 18px;
         color: var(--text);
-        background: var(--card-light);
+        background: rgba(37, 37, 37, 0.8);
+        backdrop-filter: blur(10px);
         transition: all 0.3s ease;
     }
     
     input:focus, select:focus {
         outline: none;
         border-color: var(--secondary);
-        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+        box-shadow: 
+            0 0 0 3px rgba(74, 144, 226, 0.2),
+            0 0 20px rgba(74, 144, 226, 0.1);
+        transform: translateY(-2px);
     }
     
     .rate-display {
@@ -361,7 +465,8 @@
     }
     
     .rate-card {
-        background: var(--card-light);
+        background: linear-gradient(135deg, rgba(37, 37, 37, 0.8), rgba(42, 42, 42, 0.8));
+        backdrop-filter: blur(10px);
         border: 2px solid var(--border);
         border-radius: 16px;
         padding: 24px;
@@ -369,6 +474,19 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .rate-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(74, 144, 226, 0.1) 0%, transparent 70%);
+        animation: pulse 4s ease-in-out infinite;
     }
     
     .rate-label {
@@ -376,23 +494,31 @@
         font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        position: relative;
+        z-index: 1;
     }
     
     .rate-value {
         color: var(--text);
         font-size: 28px;
         font-weight: 700;
+        position: relative;
+        z-index: 1;
     }
     
     .result-section {
-        background: linear-gradient(135deg, var(--primary), #FF7B7B);
+        background: linear-gradient(135deg, rgba(247, 147, 26, 0.15), rgba(255, 140, 0, 0.1), rgba(180, 90, 20, 0.2));
+        background-size: 200% 200%;
+        animation: orangeGlow 8s ease infinite;
         border-radius: 16px;
         padding: 32px;
         text-align: center;
-        color: white;
+        color: var(--text);
         margin-bottom: 40px;
         position: relative;
         overflow: hidden;
+        border: 2px solid var(--dark-orange-glow);
+        box-shadow: 0 0 30px var(--dark-orange-glow), inset 0 0 20px rgba(247, 147, 26, 0.05);
     }
     
     .result-section::before {
@@ -402,7 +528,7 @@
         right: -50%;
         width: 200%;
         height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 70%);
         animation: rotate 20s linear infinite;
     }
     
@@ -422,6 +548,7 @@
         font-weight: 700;
         display: block;
         margin-bottom: 8px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
     
     .result .currency-name {
@@ -441,7 +568,8 @@
     }
     
     .chart-container {
-        background: var(--card-light);
+        background: rgba(37, 37, 37, 0.8);
+        backdrop-filter: blur(10px);
         border: 2px solid var(--border);
         border-radius: 16px;
         padding: 24px;
@@ -463,7 +591,7 @@
         width: 48px;
         height: 48px;
         border: 4px solid var(--border);
-        border-top-color: var(--primary);
+        border-top-color: rgba(100, 50, 12, 0.4);
         border-radius: 50%;
         margin: 0 auto 16px;
         animation: spin 1s linear infinite;
@@ -475,20 +603,40 @@
     }
     
     .btn-retry {
-        background: var(--primary);
-        color: white;
-        border: none;
+        background: linear-gradient(135deg, #1F1F1F, #252525);
+        color: var(--text);
+        border: 1px solid rgba(100, 50, 12, 0.2);
         padding: 12px 24px;
         border-radius: 8px;
         font-size: 16px;
         cursor: pointer;
         transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-retry::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
     }
     
     .btn-retry:hover {
-        background: #FF7B7B;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 92, 92, 0.3);
+        background: linear-gradient(135deg, #252525, #2A2A2A);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    
+    .btn-retry:hover::before {
+        width: 300px;
+        height: 300px;
     }
     
     footer {
@@ -505,10 +653,11 @@
         margin-top: 8px;
     }
     
+    /* Animations */
     @@keyframes slideUp {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(30px);
         }
         to {
             opacity: 1;
@@ -528,29 +677,255 @@
         }
     }
     
-    @@media (max-width: 600px) {
+    @@keyframes bgMove {
+        0%, 100% {
+            transform: translate(0, 0) scale(1) rotate(0deg);
+        }
+        25% {
+            transform: translate(-50px, -50px) scale(1.1) rotate(90deg);
+        }
+        50% {
+            transform: translate(50px, -100px) scale(1.2) rotate(180deg);
+        }
+        75% {
+            transform: translate(-100px, 50px) scale(1.1) rotate(270deg);
+        }
+    }
+    
+    @@keyframes bitcoinFloat {
+        0%, 100% {
+            transform: translate(-50%, -50%) rotate(-15deg) scale(1);
+            opacity: 0.015;
+        }
+        25% {
+            transform: translate(-45%, -55%) rotate(-10deg) scale(1.1);
+            opacity: 0.02;
+        }
+        50% {
+            transform: translate(-55%, -45%) rotate(-20deg) scale(0.95);
+            opacity: 0.01;
+        }
+        75% {
+            transform: translate(-48%, -52%) rotate(-12deg) scale(1.05);
+            opacity: 0.018;
+        }
+    }
+    
+    @@keyframes borderGradient {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+    
+    @@keyframes shimmer {
+        0% {
+            transform: translateX(-100%) translateY(-100%) rotate(45deg);
+        }
+        100% {
+            transform: translateX(100%) translateY(100%) rotate(45deg);
+        }
+    }
+    
+    @@keyframes gradientShift {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+    
+    @@keyframes orangeGlow {
+        0%, 100% {
+            background-position: 0% 50%;
+            filter: brightness(1);
+        }
+        50% {
+            background-position: 100% 50%;
+            filter: brightness(1.2);
+        }
+    }
+    
+    @@keyframes pulse {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+        50% {
+            transform: scale(1.2);
+            opacity: 0.3;
+        }
+        100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+    }
+    
+    @@keyframes bounce {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+    
+    /* Mobile Responsiveness */
+    @@media (max-width: 768px) {
+        .container {
+            padding: 10px;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+        }
+        
+        /* Subtle Bitcoin symbol for mobile */
+        .container::after {
+            font-size: 300px;
+            opacity: 0.01;
+        }
+        
         .converter-card {
-            padding: 32px 24px;
+            padding: 20px 16px;
+            border-radius: 16px;
+            margin: 10px;
+            width: calc(100% - 20px);
+            max-width: 100%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         
         .title {
             font-size: 24px;
+            gap: 8px;
+        }
+        
+        .flag {
+            font-size: 32px;
+        }
+        
+        .update-notification {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .update-time .label {
+            font-size: 12px;
         }
         
         .update-time .time {
-            font-size: 20px;
+            font-size: 18px;
+        }
+        
+        .input-section {
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        input, select {
+            padding: 14px 16px;
+            font-size: 16px;
+            border-radius: 10px;
+        }
+        
+        .rate-card {
+            padding: 20px;
+            border-radius: 12px;
         }
         
         .rate-value {
-            font-size: 24px;
+            font-size: 22px;
+        }
+        
+        .result-section {
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+        }
+        
+        .equals {
+            font-size: 20px;
+            margin-bottom: 12px;
         }
         
         .result .amount {
             font-size: 36px;
         }
         
+        .result .currency-name {
+            font-size: 16px;
+        }
+        
+        .chart-section {
+            margin-top: 32px;
+        }
+        
+        .chart-section h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+        
         .chart-container {
-            height: 250px;
+            padding: 16px;
+            height: 240px;
+            border-radius: 12px;
+        }
+        
+        .btn-retry {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        
+        footer {
+            margin-top: 32px;
+            font-size: 12px;
+            padding: 0 20px;
+        }
+    }
+    
+    @@media (max-width: 480px) {
+        .converter-card {
+            padding: 20px 12px;
+        }
+        
+        .title {
+            font-size: 20px;
+        }
+        
+        .flag {
+            font-size: 28px;
+        }
+        
+        .update-time .time {
+            font-size: 16px;
+        }
+        
+        .result .amount {
+            font-size: 32px;
+        }
+        
+        .chart-container {
+            height: 200px;
+        }
+    }
+    
+    /* Touch-friendly improvements */
+    @@media (hover: none) and (pointer: coarse) {
+        input, select, .btn-retry {
+            min-height: 44px;
+            font-size: 16px;
+        }
+        
+        input:focus, select:focus {
+            transform: none;
         }
     }
 </style>
